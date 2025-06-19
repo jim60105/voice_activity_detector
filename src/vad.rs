@@ -112,19 +112,30 @@ struct VoiceActivityDetectorConfig {
 
 impl From<VoiceActivityDetectorConfig> for Result<VoiceActivityDetector, Error> {
     fn from(value: VoiceActivityDetectorConfig) -> Self {
-        if (value.sample_rate as f32) / (value.chunk_size as f32) > 31.25 {
-            return Err(Error::VadConfigError {
-                sample_rate: value.sample_rate,
-                chunk_size: value.chunk_size,
-            });
-        }
+        // Silero VAD V5 model restriction:
+        // - For 8 kHz, only chunk_size 256 is allowed
+        // - For 16 kHz, only chunk_size 512 is allowed
+        let sample_rate = value.sample_rate;
+        let chunk_size = match sample_rate {
+            8000 => 256,
+            16000 => 512,
+            _ => {
+                return Err(Error::VadConfigError {
+                    sample_rate,
+                    chunk_size: value.chunk_size,
+                });
+            }
+        };
 
-        let session = value.session.unwrap_or_else(|| DEFAULT_SESSION.clone());
+        let session = match value.session {
+            Some(s) => s,
+            None => DEFAULT_SESSION.clone(),
+        };
 
         Ok(VoiceActivityDetector {
             session,
-            chunk_size: value.chunk_size,
-            sample_rate: value.sample_rate,
+            chunk_size,
+            sample_rate,
             state: ndarray::Array3::<f32>::zeros((2, 1, 128)).into_dyn(),
         })
     }
