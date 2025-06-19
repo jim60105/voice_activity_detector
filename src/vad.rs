@@ -60,13 +60,6 @@ impl VoiceActivityDetector {
             input[[0, i]] = sample.to_f32();
         }
 
-        // Limit input to 480 samples as required by the ONNX model, but only if chunk_size > 480
-        let input = if self.chunk_size > 480 {
-            input.slice(ndarray::s![.., ..480]).to_owned()
-        } else {
-            input
-        };
-
         let sample_rate = ndarray::arr0::<i64>(self.sample_rate);
 
         let state_taken = std::mem::take(&mut self.state);
