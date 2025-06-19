@@ -6,6 +6,24 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+## [0.2.1](https://github.com/jim60105/voice_activity_detector/compare/v0.2.0...v0.2.1) - 2025-06-19
+
+### Added
+
+- update VAD state and model interface for new Silero VAD ONNX; fix most tests
+
+### Fixed
+
+- *(vad)* enforce valid chunk sizes for Silero V5 model
+
+### Other
+
+- enable thread-safe ONNX session and upgrade ORT 2.0.0-rc.10
+- cargo fmt
+- *(readme)* add Silero VAD V5 migration note and fix typo
+- *(vad)* enable full chunk input for ONNX model
+- update silero_vad.onnx
+
 ## [0.2.0](https://github.com/nkeenan38/voice_activity_detector/compare/v0.1.1...v0.2.0) - 2025-03-19
 
 ### Added
