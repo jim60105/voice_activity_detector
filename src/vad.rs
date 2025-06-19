@@ -9,8 +9,7 @@ pub struct VoiceActivityDetector {
     session: Arc<Session>,
     chunk_size: usize,
     sample_rate: i64,
-    h: ndarray::Array3<f32>,
-    c: ndarray::Array3<f32>,
+    state: ndarray::ArrayD<f32>,
 }
 
 /// The silero ONNX model as bytes.
@@ -44,8 +43,7 @@ impl VoiceActivityDetector {
 
     /// Resets the state of the voice activity detector session.
     pub fn reset(&mut self) {
-        self.h.fill(0f32);
-        self.c.fill(0f32);
+        self.state = ndarray::Array3::<f32>::zeros((2, 1, 128)).into_dyn();
     }
 
     /// Predicts the existence of speech in a single iterable of audio.
@@ -62,32 +60,33 @@ impl VoiceActivityDetector {
             input[[0, i]] = sample.to_f32();
         }
 
-        let sample_rate = ndarray::arr1::<i64>(&[self.sample_rate]);
+        // Limit input to 480 samples as required by the ONNX model, but only if chunk_size > 480
+        let input = if self.chunk_size > 480 {
+            input.slice(ndarray::s![.., ..480]).to_owned()
+        } else {
+            input
+        };
+
+        let sample_rate = ndarray::arr0::<i64>(self.sample_rate);
+
+        let state_taken = std::mem::take(&mut self.state);
 
         let inputs = ort::inputs![
-            "input" => input.view(),
-            "sr" => sample_rate.view(),
-            "h" => self.h.view(),
-            "c" => self.c.view(),
+            input.view(),
+            state_taken.view(),
+            sample_rate.view(),
         ]
         .unwrap();
 
         let outputs = self.session.run(inputs).unwrap();
 
-        // Update h and c recursively.
-        let hn = outputs
-            .get("hn")
+        // Update state recursively.
+        self.state = outputs
+            .get("stateN")
             .unwrap()
             .try_extract_tensor::<f32>()
-            .unwrap();
-        let cn = outputs
-            .get("cn")
             .unwrap()
-            .try_extract_tensor::<f32>()
-            .unwrap();
-
-        self.h.assign(&hn.view());
-        self.c.assign(&cn.view());
+            .to_owned();
 
         // Get the probability of speech.
         let output = outputs
@@ -133,8 +132,7 @@ impl From<VoiceActivityDetectorConfig> for Result<VoiceActivityDetector, Error> 
             session,
             chunk_size: value.chunk_size,
             sample_rate: value.sample_rate,
-            h: ndarray::Array3::<f32>::zeros((2, 1, 64)),
-            c: ndarray::Array3::<f32>::zeros((2, 1, 64)),
+            state: ndarray::Array3::<f32>::zeros((2, 1, 128)).into_dyn(),
         })
     }
 }
