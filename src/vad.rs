@@ -1,12 +1,13 @@
+use ort::value::Tensor;
 use ort::{session::builder::GraphOptimizationLevel, session::Session};
-use std::sync::{Arc, LazyLock};
+use std::sync::{Arc, LazyLock, Mutex};
 
 use crate::{error::Error, Sample};
 
 /// A voice activity detector session.
 #[derive(Debug)]
 pub struct VoiceActivityDetector {
-    session: Arc<Session>,
+    session: Arc<Mutex<Session>>,
     chunk_size: usize,
     sample_rate: i64,
     state: ndarray::ArrayD<f32>,
@@ -15,8 +16,8 @@ pub struct VoiceActivityDetector {
 /// The silero ONNX model as bytes.
 const MODEL: &[u8] = include_bytes!("silero_vad.onnx");
 
-static DEFAULT_SESSION: LazyLock<Arc<Session>> = LazyLock::new(|| {
-    Arc::new({
+static DEFAULT_SESSION: LazyLock<Arc<Mutex<Session>>> = LazyLock::new(|| {
+    Arc::new(Mutex::new({
         Session::builder()
             .unwrap()
             .with_optimization_level(GraphOptimizationLevel::Level3)
@@ -27,7 +28,7 @@ static DEFAULT_SESSION: LazyLock<Arc<Session>> = LazyLock::new(|| {
             .unwrap()
             .commit_from_memory(MODEL)
             .unwrap()
-    })
+    }))
 });
 
 impl VoiceActivityDetector {
@@ -61,18 +62,23 @@ impl VoiceActivityDetector {
         }
 
         let sample_rate = ndarray::arr0::<i64>(self.sample_rate);
-
         let state_taken = std::mem::take(&mut self.state);
 
-        let inputs = ort::inputs![input.view(), state_taken.view(), sample_rate.view(),].unwrap();
+        // ort::inputs! macro no longer supports ArrayView, use Tensor::from_array instead
+        let inputs = ort::inputs![
+            Tensor::from_array(input.to_owned()).unwrap(),
+            Tensor::from_array(state_taken.to_owned()).unwrap(),
+            Tensor::from_array(sample_rate.to_owned()).unwrap(),
+        ];
 
-        let outputs = self.session.run(inputs).unwrap();
+        let mut session = self.session.lock().unwrap();
+        let outputs = session.run(inputs).unwrap();
 
         // Update state recursively.
         self.state = outputs
             .get("stateN")
             .unwrap()
-            .try_extract_tensor::<f32>()
+            .try_extract_array::<f32>()
             .unwrap()
             .to_owned();
 
@@ -80,11 +86,9 @@ impl VoiceActivityDetector {
         let output = outputs
             .get("output")
             .unwrap()
-            .try_extract_tensor::<f32>()
+            .try_extract_array::<f32>()
             .unwrap();
-        let probability = output.view()[[0, 0]];
-
-        probability
+        output[[0, 0]]
     }
 }
 
@@ -102,7 +106,7 @@ struct VoiceActivityDetectorConfig {
     #[builder(setter(into))]
     sample_rate: i64,
     #[builder(default, setter(strip_option))]
-    session: Option<Arc<Session>>,
+    session: Option<Arc<Mutex<Session>>>,
 }
 
 impl From<VoiceActivityDetectorConfig> for Result<VoiceActivityDetector, Error> {
