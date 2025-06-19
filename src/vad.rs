@@ -64,12 +64,7 @@ impl VoiceActivityDetector {
 
         let state_taken = std::mem::take(&mut self.state);
 
-        let inputs = ort::inputs![
-            input.view(),
-            state_taken.view(),
-            sample_rate.view(),
-        ]
-        .unwrap();
+        let inputs = ort::inputs![input.view(), state_taken.view(), sample_rate.view(),].unwrap();
 
         let outputs = self.session.run(inputs).unwrap();
 
