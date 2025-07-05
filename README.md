@@ -2,6 +2,10 @@
 
 Provides a model and extensions for detecting speech in audio.
 
+> [!IMPORTANT]  
+> This is a fork of [voice_activity_detector](https://crates.io/crates/voice_activity_detector), modified to use the Silero VAD V5 model.  
+> I am releasing it because I need to use it in another crate. I will delete this fork after [PR #50](https://github.com/nkeenan38/voice_activity_detector/pull/50) is merged. If you are using my fork, please be aware that changes may occur in the future.
+
 ## Standalone Voice Activity Detector
 
 This crate provides a standalone Voice Activity Detector (VAD) which can be used to predict speech in a chunk of audio. This implementation uses the [Silero VAD](https://github.com/snakers4/silero-vad).
