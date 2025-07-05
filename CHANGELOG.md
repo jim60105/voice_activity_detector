@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+## [0.2.0-silero-v5] - 2025-07-06
+### Added
+- Added: Support for Silero VAD v5 model, including new ONNX interface and state handling.
+
+### Changed
+- Changed: ONNX Session is now thread-safe (Arc<Mutex<Session>>), enabling safe concurrent access.
+- Changed: Model input/output handling to match Silero VAD v5 ONNX requirements (state shape, input/output names, sample_rate as scalar).
+- Changed: Validation for chunk sizes to enforce Silero VAD v5 model constraints.
+- Changed: Updated tests and documentation for Silero VAD v5 migration and chunk size requirements.
+
+### Fixed
+- Fixed: Enforced valid chunk sizes for Silero VAD v5 model to prevent invalid configurations.
+- Fixed: Most tests to comply with new model interface and chunk size limitations.
+
+### Other
+- Other: Locked ort and ort-sys dependencies to =2.0.0-rc.10 for build stability.
+- Other: Code formatting and refactoring for maintainability.
 
 ## [0.2.0](https://github.com/nkeenan38/voice_activity_detector/compare/v0.1.1...v0.2.0) - 2025-03-19
 
