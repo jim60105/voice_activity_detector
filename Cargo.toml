@@ -1,5 +1,5 @@
 [package]
-name = "voice_activity_detector"
+name = "voice_activity_detector_silero_v5"
 version = "0.2.0-silero-v5"
 edition = "2021"
 authors = ["Nick Keenan <nkeenan38@gmail.com>"]
